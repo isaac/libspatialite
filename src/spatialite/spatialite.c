@@ -24999,6 +24999,84 @@ fnct_Distance (sqlite3_context * context, int argc, sqlite3_value ** argv)
 }
 
 static void
+fnct_GreatCircleDistance (sqlite3_context * context, int argc, sqlite3_value ** argv)
+{
+/* SQL function:
+/ GreatCircleDistance(BLOBencoded geom1, BLOBencoded geom2)
+/
+/ returns the great circle distance between two points
+*/
+    unsigned char *p_blob;
+    int n_bytes;
+    gaiaGeomCollPtr geo1 = NULL;
+    gaiaGeomCollPtr geo2 = NULL;
+    gaiaPointPtr pt;
+    double x0 = 0.0;
+    double y0 = 0.0;
+    double x1 = 0.0;
+    double y1 = 0.0;
+    int pt0 = 0;
+    int pt1 = 0;
+    double dist;
+    double a;
+    double b;
+    double rf;
+    int ret;
+    sqlite3 *sqlite = sqlite3_context_db_handle (context);
+    int gpkg_amphibious = 0;
+    int gpkg_mode = 0;
+    GAIA_UNUSED ();		/* LCOV_EXCL_LINE */
+    if (sqlite3_value_type (argv[0]) != SQLITE_BLOB) {
+      sqlite3_result_null (context);
+      return;
+    }
+    if (sqlite3_value_type (argv[1]) != SQLITE_BLOB) {
+      sqlite3_result_null (context);
+      return;
+    }
+    p_blob = (unsigned char *) sqlite3_value_blob (argv[0]);
+    n_bytes = sqlite3_value_bytes (argv[0]);
+    geo1 = gaiaFromSpatiaLiteBlobWkbEx (p_blob, n_bytes, gpkg_mode, gpkg_amphibious);
+    p_blob = (unsigned char *) sqlite3_value_blob (argv[1]);
+    n_bytes = sqlite3_value_bytes (argv[1]);
+    geo2 = gaiaFromSpatiaLiteBlobWkbEx (p_blob, n_bytes, gpkg_mode, gpkg_amphibious);
+    if (!geo1 || !geo2) {
+      sqlite3_result_null (context);
+    }
+    else {
+      pt = geo1->FirstPoint;
+      while (pt) {
+        x0 = pt->X;
+        y0 = pt->Y;
+        pt0++;
+        pt = pt->Next;
+      }
+      pt = geo2->FirstPoint;
+      while (pt) {
+        x1 = pt->X;
+        y1 = pt->Y;
+        pt1++;
+        pt = pt->Next;
+      }
+      if (pt0 == 1 && pt1 == 1) {
+        a = 6378137.0;
+        rf = 298.257223563;
+        b = (a * (1.0 - (1.0 / rf)));
+        dist = gaiaGreatCircleDistance (a, b, y0, x0, y1, x1);
+      }
+      if (!dist) {
+        sqlite3_result_null (context);
+      }
+      else {
+        sqlite3_result_double (context, dist);
+      }
+    }
+  stop:
+    gaiaFreeGeomColl (geo1);
+    gaiaFreeGeomColl (geo2);
+}
+
+static void
 fnct_PtDistWithin (sqlite3_context * context, int argc, sqlite3_value ** argv)
 {
 /* SQL function:
@@ -45284,6 +45362,9 @@ register_spatialite_sql_functions (void *p_db, const void *p_cache)
     sqlite3_create_function_v2 (db, "ST_Distance", 3,
 				SQLITE_UTF8 | SQLITE_DETERMINISTIC, cache,
 				fnct_Distance, 0, 0, 0);
+    sqlite3_create_function_v2 (db, "GreatCircleDistance", 2,
+				SQLITE_UTF8 | SQLITE_DETERMINISTIC, cache,
+				fnct_GreatCircleDistance, 0, 0, 0);
     sqlite3_create_function_v2 (db, "PtDistWithin", 3,
 				SQLITE_UTF8 | SQLITE_DETERMINISTIC, cache,
 				fnct_PtDistWithin, 0, 0, 0);
