@@ -301,6 +301,15 @@ gaiaGeodesicDistance (double a, double b, double rf, double lat1, double lon1,
 #endif /* end Vincenty formula */
 }
 
+GAIAGEO_DECLARE double
+gaiaGeodesicArcLength (double a, double b, double rf, double lat1, double lon1,
+		      double lat2, double lon2)
+{
+    struct geod_geodesic gd;
+    geod_init (&gd, a, 1 / rf);
+    return geod_geninverse (&gd, lat1, lon1, lat2, lon2, 0, 0, 0, 0, 0, 0, 0);
+}
+
 GAIAGEO_DECLARE void
 gaiaFree (void *ptr)
 {
