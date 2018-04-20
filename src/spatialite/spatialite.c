@@ -24999,6 +24999,82 @@ fnct_Distance (sqlite3_context * context, int argc, sqlite3_value ** argv)
 }
 
 static void
+fnct_ArcLength (sqlite3_context * context, int argc, sqlite3_value ** argv)
+{
+/* SQL function:
+/ ArcLength(BLOBencoded point1, BLOBencoded point2)
+/
+/ returns the arc length in degress between two points
+*/
+    unsigned char *p_blob;
+    int n_bytes;
+    gaiaGeomCollPtr point1 = NULL;
+    gaiaGeomCollPtr point2 = NULL;
+    gaiaPointPtr pt;
+    double x0 = 0.0;
+    double y0 = 0.0;
+    double x1 = 0.0;
+    double y1 = 0.0;
+    int pt0 = 0;
+    int pt1 = 0;
+    double length;
+    double a;
+    double b;
+    double rf;
+    sqlite3 *sqlite = sqlite3_context_db_handle (context);
+    int gpkg_amphibious = 0;
+    int gpkg_mode = 0;
+    GAIA_UNUSED ();		/* LCOV_EXCL_LINE */
+    if (sqlite3_value_type (argv[0]) != SQLITE_BLOB) {
+      sqlite3_result_null (context);
+      return;
+    }
+    if (sqlite3_value_type (argv[1]) != SQLITE_BLOB) {
+      sqlite3_result_null (context);
+      return;
+    }
+    p_blob = (unsigned char *) sqlite3_value_blob (argv[0]);
+    n_bytes = sqlite3_value_bytes (argv[0]);
+    point1 = gaiaFromSpatiaLiteBlobWkbEx (p_blob, n_bytes, gpkg_mode, gpkg_amphibious);
+    p_blob = (unsigned char *) sqlite3_value_blob (argv[1]);
+    n_bytes = sqlite3_value_bytes (argv[1]);
+    point2 = gaiaFromSpatiaLiteBlobWkbEx (p_blob, n_bytes, gpkg_mode, gpkg_amphibious);
+    if (!point1 || !point2) {
+      sqlite3_result_null (context);
+    }
+    else {
+      pt = point1->FirstPoint;
+      while (pt) {
+        x0 = pt->X;
+        y0 = pt->Y;
+        pt0++;
+        pt = pt->Next;
+      }
+      pt = point2->FirstPoint;
+      while (pt) {
+        x1 = pt->X;
+        y1 = pt->Y;
+        pt1++;
+        pt = pt->Next;
+      }
+      if (pt0 == 1 && pt1 == 1) {
+        getEllipsoidParams (sqlite, point1->Srid, &a, &b, &rf);
+        length = gaiaGeodesicArcLength (a, b, rf, y0, x0, y1, x1);
+      }
+      if (!length) {
+        sqlite3_result_null (context);
+      }
+      else {
+        sqlite3_result_double (context, length);
+      }
+    }
+  stop:
+    gaiaFreeGeomColl (point1);
+    gaiaFreeGeomColl (point2);
+}
+
+
+static void
 fnct_PtDistWithin (sqlite3_context * context, int argc, sqlite3_value ** argv)
 {
 /* SQL function:
@@ -45284,6 +45360,9 @@ register_spatialite_sql_functions (void *p_db, const void *p_cache)
     sqlite3_create_function_v2 (db, "ST_Distance", 3,
 				SQLITE_UTF8 | SQLITE_DETERMINISTIC, cache,
 				fnct_Distance, 0, 0, 0);
+    sqlite3_create_function_v2 (db, "ArcLength", 2,
+				SQLITE_UTF8 | SQLITE_DETERMINISTIC, cache,
+				fnct_ArcLength, 0, 0, 0);
     sqlite3_create_function_v2 (db, "PtDistWithin", 3,
 				SQLITE_UTF8 | SQLITE_DETERMINISTIC, cache,
 				fnct_PtDistWithin, 0, 0, 0);

@@ -1991,6 +1991,32 @@ extern "C"
 						 double lon1, double lat2,
 						 double lon2);
 
+ /**
+ Calculates the arc length between between two Points
+
+ \param a first geodesic parameter.
+ \param b second geodesic parameter.
+ \param rf third geodesic parameter.
+ \param lat1 Latitude of first Point.
+ \param lon1 Longitude of first Point.
+ \param lat2 Latitude of second Point.
+ \param lon2 Longitude of second Point.
+
+ \return the calculated arc length.
+
+ \sa gaiaEllipseParams, gaiaGreatCircleDistance, gaiaGreatCircleTotalLength,
+ gaiaGeodesicTotalLength, gaiaGeodesicDistance
+
+ \note the returned length is expressed in degrees.
+ */
+
+
+    GAIAGEO_DECLARE double gaiaGeodesicArcLength (double a, double b,
+    				 double rf, double lat1,
+    				 double lon1, double lat2,
+    				 double lon2);
+
+
 /**
  Calculates the Great Circle Total Length for a Linestring / Ring
 
